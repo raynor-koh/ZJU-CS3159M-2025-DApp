@@ -7,7 +7,7 @@ pragma solidity ^0.8.20;
 // import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // Uncomment this line to use console.log
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract EasyBet {
 
