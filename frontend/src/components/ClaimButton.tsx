@@ -1,63 +1,72 @@
+// src/components/ClaimButton.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { coinERC20Contract } from "@/utils/contracts";
+import { useState, useEffect } from "react";
+import { getWriteContracts } from "@/utils/contracts";
 
-export default function ClaimButton({ account }: { account: string }) {
-  const [loading, setLoading] = useState(false);
-  const [txHash, setTxHash] = useState<string | null>(null);
-  const [claimed, setClaimed] = useState<boolean | null>(null);
+type Props = {
+  onClaimed?: () => void;
+  className?: string;
+};
 
-  // Load claim status when account changes
+export default function ClaimButton({ onClaimed, className }: Props) {
+  const [busy, setBusy] = useState(false);
+  const [hasClaimed, setHasClaimed] = useState(false);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    if (!account) return;
+    checkClaimStatus();
+  }, []);
 
-    let mounted = true;
-    const loadClaimStatus = async () => {
-      try {
-        const result = await coinERC20Contract.methods
-          .hasClaimed(account)
-          .call();
-        if (mounted) setClaimed(!!result);
-        const owner = await coinERC20Contract.methods.owner().call();
-        console.log("Owner:", owner);
-      } catch (err) {
-        console.error("Error checking claim status:", err);
-      }
-    };
-
-    loadClaimStatus();
-    return () => {
-      mounted = false;
-    };
-  }, [account]);
-
-  const onClaim = async () => {
-    setLoading(true);
-    setTxHash(null);
+  const checkClaimStatus = async () => {
     try {
-      const receipt = await coinERC20Contract.methods
-        .claim()
-        .send({ from: account });
-      setTxHash(receipt?.transactionHash ?? null);
-      setClaimed(true); // disable after successful claim
-    } catch (err: any) {
-      alert(err?.message ?? "Claim failed");
+      const { token, signer } = await getWriteContracts();
+      const address = await signer.getAddress();
+      const claimed = await token.hasClaimed(address);
+      setHasClaimed(claimed);
+    } catch (e: any) {
+      console.error("Failed to check claim status:", e?.message ?? e);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="flex items-center gap-2">
+  const claim = async () => {
+    try {
+      setBusy(true);
+      const { token } = await getWriteContracts();
+      // EasyToken.claim() — mints/airdrops test tokens for the caller
+      const tx = await token.claim();
+      await tx.wait();
+      setHasClaimed(true);
+      onClaimed?.();
+    } catch (e: any) {
+      console.error("Claim failed:", e?.message ?? e);
+      alert(e?.message ?? "Claim failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
+    return (
       <button
-        onClick={onClaim}
-        disabled={loading || claimed === true}
-        className="rounded-xl border px-3 py-1 text-sm"
-        title="Claim your one-time 1000 EZT airdrop"
+        disabled
+        className={className ?? "rounded-xl border px-3 py-1 text-sm disabled:opacity-50"}
       >
-        {claimed ? "Already Claimed" : loading ? "Claiming..." : "Claim EZT"}
+        Loading...
       </button>
-    </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={claim}
+      disabled={busy || hasClaimed}
+      className={className ?? "rounded-xl border px-3 py-1 text-sm disabled:opacity-50"}
+      title={hasClaimed ? "Already claimed" : "Claim demo EZT to participate"}
+    >
+      {busy ? "Claiming…" : hasClaimed ? "Claimed" : "Claim EZT"}
+    </button>
   );
 }

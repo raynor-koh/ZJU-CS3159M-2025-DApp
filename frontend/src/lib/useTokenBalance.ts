@@ -1,41 +1,34 @@
+// src/lib/useTokenBalance.ts
 "use client";
 
-import { useEffect, useState } from "react";
-import { coinERC20Contract, web3 } from "@/utils/contracts";
+import { useEffect, useMemo, useState } from "react";
+import { formatUnits } from "ethers";
+import { getProvider, getReadContracts } from "@/utils/contracts";
 
 export function useTokenBalance(account?: string | null) {
-  const [balance, setBalance] = useState<string>("0");
+  const [balance, setBalance] = useState("0.00");
+  const [decimals, setDecimals] = useState(18);
+  const [nonce, setNonce] = useState(0); // call reload() to bump
+
+  const reload = () => setNonce((n) => n + 1);
 
   useEffect(() => {
-    if (!account) {
-      setBalance("0");
-      return;
-    }
-
-    let mounted = true;
-
-    const load = async () => {
-      try {
-        const balAny = await coinERC20Contract.methods
-          .balanceOf(account)
-          .call();
-        const formatted = web3.utils.fromWei(
-          balAny?.toString?.() ?? "0",
-          "ether"
-        );
-
-        if (mounted) setBalance(formatted);
-      } catch (err) {
-        console.error("Error loading balance:", err);
+    let cancelled = false;
+    (async () => {
+      if (!account) { setBalance("0.00"); return; }
+      const provider = await getProvider();
+      const { token } = getReadContracts(provider);
+      const [dec, bal] = await Promise.all([
+        token.decimals().catch(() => 18),
+        token.balanceOf(account),
+      ]);
+      if (!cancelled) {
+        setDecimals(Number(dec));
+        setBalance(Number(formatUnits(bal, Number(dec))).toFixed(2));
       }
-    };
+    })();
+    return () => { cancelled = true; };
+  }, [account, nonce]);
 
-    load();
-    // Reload when account changes
-    return () => {
-      mounted = false;
-    };
-  }, [account]);
-
-  return balance;
+  return useMemo(() => ({ balance, decimals, reload }), [balance, decimals]);
 }

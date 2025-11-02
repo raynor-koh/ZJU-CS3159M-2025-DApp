@@ -33,7 +33,7 @@ export default function MarketCard({ m }: { m: Market }) {
       )}
 
       <div className="flex flex-wrap gap-4 text-sm">
-        <div>Oracle: <span className="font-medium">{m.oracle}</span></div>
+        {/* <div>Oracle: <span className="font-medium">{m.oracle}</span></div> */}
         <div>Prize Pool: <span className="font-medium">{m.prizePool}</span></div>
         <div>Tickets: <span className="font-medium">{totalTickets}</span></div>
         <div>Volume: <span className="font-medium">{totalVolume}</span></div>

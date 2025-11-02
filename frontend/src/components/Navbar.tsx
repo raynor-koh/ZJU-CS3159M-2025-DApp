@@ -1,20 +1,18 @@
+// src/components/Navbar.tsx
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { useMarketStore } from "@/lib/marketStore";
 import { useWallet } from "@/lib/useWallet";
 import { useTokenBalance } from "@/lib/useTokenBalance";
-import { useAdmin } from "@/lib/useAdmin";
 import ClaimButton from "@/components/ClaimButton";
 
-export default function Navbar() {
-  const seed = useMarketStore((s) => s.seed);
-  const { account, connect, connecting } = useWallet();
-  const balance = useTokenBalance(account);
-  const isAdmin = useAdmin(account);
+declare global {
+  interface Window { ethereum?: any }
+}
 
-  useEffect(() => seed(), [seed]);
+export default function Navbar() {
+  const { account, connect, connecting } = useWallet();
+  const { balance, reload } = useTokenBalance(account ?? undefined);
 
   const short = (addr?: string | null) =>
     addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
@@ -22,16 +20,11 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="text-lg font-semibold">
-          ZJU-PolyMarket
-        </Link>
+        <Link href="/" className="text-lg font-semibold">ZJU-PolyMarket</Link>
 
-        <nav className="flex items-center gap-3">
-          {isAdmin && ( // <-- show only when admin
-            <Link href="/admin" className="text-sm hover:underline">
-              Verifier Admin
-            </Link>
-          )}
+        <nav className="flex items-center gap-4">
+          <Link href="/" className="text-sm hover:underline">Home</Link>
+          <Link href="/admin" className="text-sm hover:underline">Admin</Link>
 
           {!account ? (
             <button
@@ -43,9 +36,18 @@ export default function Navbar() {
             </button>
           ) : (
             <>
-              <span className="text-sm font-medium">{account}</span>
-              <span className="text-sm">EZT: {parseFloat(balance).toFixed(2)}</span>
-              <ClaimButton account={account} />
+              {/* Token balance */}
+              <span className="text-sm" title="Your EZT balance">
+                EZT: <span className="font-medium">{balance}</span>
+              </span>
+
+              {/* Claim button (calls EasyToken.claim) */}
+              <ClaimButton onClaimed={reload} />
+
+              {/* Address */}
+              <span className="text-sm font-medium" title={account}>
+                {short(account)}
+              </span>
             </>
           )}
         </nav>

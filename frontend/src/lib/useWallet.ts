@@ -1,32 +1,37 @@
-"use client"
+// src/lib/useWallet.ts
+"use client";
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react";
+
+declare global {
+  interface Window { ethereum?: any }
+}
 
 export function useWallet() {
-  const [account, setAccount] = useState<string | null>(null)
-  const [connecting, setConnecting] = useState(false)
+  const [account, setAccount] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
-  const connect = async () => {
-    setConnecting(true)
+  const connect = useCallback(async () => {
+    if (!window.ethereum) return alert("MetaMask not found.");
+    setConnecting(true);
     try {
-      const ethereum = (window as any).ethereum
-      if (!ethereum) throw new Error("MetaMask not found")
-      const [addr] = await ethereum.request({ method: "eth_requestAccounts" })
-      setAccount(addr ?? null)
-      return addr
+      const accs: string[] = await window.ethereum.request({ method: "eth_requestAccounts" });
+      setAccount(accs?.[0] ?? null);
     } finally {
-      setConnecting(false)
+      setConnecting(false);
     }
-  }
+  }, []);
 
-  // keep account in sync if user switches inside MetaMask
   useEffect(() => {
-    const ethereum = (window as any).ethereum
-    if (!ethereum) return
-    const handler = (accs: string[]) => setAccount(accs[0] ?? null)
-    ethereum.on("accountsChanged", handler)
-    return () => ethereum.removeListener("accountsChanged", handler)
-  }, [])
+    const eth = window.ethereum;
+    if (!eth) return;
+    eth.request({ method: "eth_accounts" }).then((accs: string[]) => {
+      if (accs?.length) setAccount(accs[0]);
+    });
+    const onAccounts = (accs: string[]) => setAccount(accs?.[0] ?? null);
+    eth.on?.("accountsChanged", onAccounts);
+    return () => eth.removeListener?.("accountsChanged", onAccounts);
+  }, []);
 
-  return { account, connect, connecting }
+  return { account, connect, connecting };
 }

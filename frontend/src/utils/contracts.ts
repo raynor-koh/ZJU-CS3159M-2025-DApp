@@ -1,28 +1,52 @@
-import Addresses from './contract-addresses.json'
-import Market from './abis/EasyBet.json'
-import CoinERC20 from './abis/EasyToken.json'
-import Web3 from 'web3'
+// src/utils/contracts.ts
+"use client";
+
+import { BrowserProvider, JsonRpcProvider, Contract } from "ethers";
+import EasyBet from "@/utils/abis/EasyBet.json";
+import EasyToken from "@/utils/abis/EasyToken.json";
+import TicketNFT from "@/utils/abis/TicketNFT.json";
+import addrs from "@/utils/contract-addresses.json";
+
+export const ADDRESSES = {
+  easyBet: addrs.easyBet,
+  easyToken: addrs.easyToken,
+  ticketNFT: addrs.ticketNFT,
+} as const;
+
+const RPC_FALLBACK = "http://127.0.0.1:8545";
 
 declare global {
-  interface Window {
-    ethereum?: any
+  interface Window { ethereum?: any }
+}
+
+export async function getProvider() {
+  if (typeof window !== "undefined" && window.ethereum) {
+    const p = new BrowserProvider(window.ethereum);
+    // ensure connection (prompts if needed)
+    await p.send("eth_requestAccounts", []);
+    return p;
   }
+  return new JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL ?? RPC_FALLBACK);
 }
 
-if (typeof window !== "undefined"  && !window?.ethereum) {
-  throw new Error('MetaMask not found. Please install MetaMask and refresh.')
+export function getReadContracts(provider: any) {
+  return {
+    bet: new Contract(ADDRESSES.easyBet, EasyBet.abi, provider),
+    token: new Contract(ADDRESSES.easyToken, EasyToken.abi, provider),
+    ticket: new Contract(ADDRESSES.ticketNFT, TicketNFT.abi, provider),
+  };
 }
 
-export const web3 = new Web3(window.ethereum)
+/** Write set: returns signer + contracts bound to that signer */
+export async function getWriteContracts() {
+  const provider = await getProvider();                  // BrowserProvider
+  // typed as any to keep TS happy across different provider types
+  const signer = await (provider as any).getSigner();    // MetaMask active account
 
-// If you want to proactively request accounts elsewhere, export a helper:
-export const requestAccounts = () =>
-  window.ethereum.request({ method: 'eth_requestAccounts' })
-
-const marketAddress = Addresses.market
-const coinERC20Address = Addresses.coinERC20
-const marketABI = Market.abi
-const coinERC20ABI = CoinERC20.abi
-
-export const marketContract = new web3.eth.Contract(marketABI as any, marketAddress)
-export const coinERC20Contract = new web3.eth.Contract(coinERC20ABI as any, coinERC20Address)
+  return {
+    signer,                                              // <-- include signer
+    bet: new Contract(ADDRESSES.easyBet, EasyBet.abi, signer),
+    token: new Contract(ADDRESSES.easyToken, EasyToken.abi, signer),
+    ticket: new Contract(ADDRESSES.ticketNFT, TicketNFT.abi, signer),
+  };
+}
