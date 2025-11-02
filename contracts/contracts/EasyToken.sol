@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract EasyToken is ERC20, Ownable{
 
     mapping(address => bool) public hasClaimed;
-    uint256 public constant CLAIM_AMOUNT = 1000 * 10 ** 18;
+    uint256 public constant CLAIM_AMOUNT = 100000 * 10 ** 18;
 
     constructor() ERC20("EasyToken", "EZT") Ownable(msg.sender) {}
 

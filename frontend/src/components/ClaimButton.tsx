@@ -15,8 +15,12 @@ export default function ClaimButton({ account }: { account: string }) {
     let mounted = true;
     const loadClaimStatus = async () => {
       try {
-        const result = await coinERC20Contract.methods.hasClaimed(account).call();
+        const result = await coinERC20Contract.methods
+          .hasClaimed(account)
+          .call();
         if (mounted) setClaimed(!!result);
+        const owner = await coinERC20Contract.methods.owner().call();
+        console.log("Owner:", owner);
       } catch (err) {
         console.error("Error checking claim status:", err);
       }
@@ -52,11 +56,7 @@ export default function ClaimButton({ account }: { account: string }) {
         className="rounded-xl border px-3 py-1 text-sm"
         title="Claim your one-time 1000 EZT airdrop"
       >
-        {claimed
-          ? "Already Claimed"
-          : loading
-          ? "Claiming..."
-          : "Claim EZT"}
+        {claimed ? "Already Claimed" : loading ? "Claiming..." : "Claim EZT"}
       </button>
     </div>
   );
