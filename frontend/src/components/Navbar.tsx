@@ -3,11 +3,19 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useMarketStore } from "@/lib/marketStore";
+import { useWallet } from "@/lib/useWallet";
+import { useTokenBalance } from "@/lib/useTokenBalance";
+import ClaimButton from "@/components/ClaimButton";
 
 export default function Navbar() {
   const seed = useMarketStore((s) => s.seed);
+  const { account, connect, connecting } = useWallet();
+  const balance = useTokenBalance(account);
 
-  useEffect(() => seed(), [seed]); // load sample
+  useEffect(() => seed(), [seed]);
+
+  const short = (addr?: string | null) =>
+    addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
 
   return (
     <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
@@ -15,16 +23,29 @@ export default function Navbar() {
         <Link href="/" className="text-lg font-semibold">
           ZJU-PolyMarket
         </Link>
+
         <nav className="flex items-center gap-3">
           <Link href="/admin" className="text-sm hover:underline">
             Verifier Admin
           </Link>
-          <button
-            className="rounded-xl border px-3 py-1 text-sm"
-            onClick={() => alert("Connect Wallet – placeholder")}
-          >
-            Connect Wallet
-          </button>
+
+          {!account ? (
+            <button
+              className="rounded-xl border px-3 py-1 text-sm"
+              onClick={connect}
+              disabled={connecting}
+            >
+              {connecting ? "Connecting…" : "Connect Wallet"}
+            </button>
+          ) : (
+            <>
+              <span className="text-sm font-medium">{short(account)}</span>
+              <span className="text-sm">
+                EZT: {parseFloat(balance).toFixed(2)}
+              </span>
+              <ClaimButton account={account} />
+            </>
+          )}
         </nav>
       </div>
     </header>

@@ -6,6 +6,12 @@ async function main() {
   await easyBet.deployed();
 
   console.log(`EasyBet deployed to ${easyBet.address}`);
+
+  const EasyToken = await ethers.getContractFactory("EasyToken");
+  const easyToken = await EasyToken.deploy();
+  await easyToken.deployed();
+
+  console.log(`EasyToken deployed to: ${easyToken.address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

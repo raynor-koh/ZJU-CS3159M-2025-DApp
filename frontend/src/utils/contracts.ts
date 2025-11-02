@@ -1,23 +1,28 @@
 import Addresses from './contract-addresses.json'
-import Lottery from './abis/Lottery.json'
-import MyERC20 from './abis/MyERC20.json'
+import Market from './abis/EasyBet.json'
+import CoinERC20 from './abis/EasyToken.json'
+import Web3 from 'web3'
 
-const Web3 = require('web3');
+declare global {
+  interface Window {
+    ethereum?: any
+  }
+}
 
-// @ts-ignore
-// 创建web3实例
-// 可以阅读获取更多信息https://docs.metamask.io/guide/provider-migration.html#replacing-window-web3
-let web3 = new Web3(window.web3.currentProvider)
+if (typeof window !== "undefined"  && !window?.ethereum) {
+  throw new Error('MetaMask not found. Please install MetaMask and refresh.')
+}
 
-// 修改地址为部署的合约地址
-const lotteryAddress = Addresses.lottery
-const lotteryABI = Lottery.abi
-const myERC20Address = Addresses.myERC20
-const myERC20ABI = MyERC20.abi
+export const web3 = new Web3(window.ethereum)
 
-// 获取合约实例
-const lotteryContract = new web3.eth.Contract(lotteryABI, lotteryAddress);
-const myERC20Contract = new web3.eth.Contract(myERC20ABI, myERC20Address);
+// If you want to proactively request accounts elsewhere, export a helper:
+export const requestAccounts = () =>
+  window.ethereum.request({ method: 'eth_requestAccounts' })
 
-// 导出web3实例和其它部署的合约
-export {web3, lotteryContract, myERC20Contract}
+const marketAddress = Addresses.market
+const coinERC20Address = Addresses.coinERC20
+const marketABI = Market.abi
+const coinERC20ABI = CoinERC20.abi
+
+export const marketContract = new web3.eth.Contract(marketABI as any, marketAddress)
+export const coinERC20Contract = new web3.eth.Contract(coinERC20ABI as any, coinERC20Address)
