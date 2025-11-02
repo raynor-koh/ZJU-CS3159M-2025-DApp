@@ -29,7 +29,7 @@ const sample: Market = {
     { id: "opt-c", label: "Player C", price: 5, tickets: 15, volume: 75 },
   ],
   status: "open",
-  createdAt: Date.now(),
+  createdAt: Date.now().toString(),
 };
 
 export const useMarketStore = create<State & Actions>()(
@@ -46,7 +46,7 @@ export const useMarketStore = create<State & Actions>()(
           ...m,
           id,
           status: "open",
-          createdAt: Date.now(),
+          createdAt: Date.now().toString(),
           options: m.options.map((o) => ({ ...o, tickets: 0, volume: 0 })),
         };
         set({ markets: [market, ...get().markets] });

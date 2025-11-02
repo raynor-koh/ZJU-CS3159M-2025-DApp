@@ -1,3 +1,5 @@
+export type MarketStatus = "open" | "resolved";
+
 export type Option = {
   id: string;
   label: string;
@@ -13,9 +15,10 @@ export type Market = {
   oracle: string; // public verifier label/email/etc
   prizePool: number; // total pool funded by verifier
   options: Option[];
-  status: "open" | "resolved";
+  status: MarketStatus;
   resolvedOptionId?: string;
-  createdAt: number;
+  createdAt: string;
+  resolveAt?: string;
 };
 
 export type Ticket = {

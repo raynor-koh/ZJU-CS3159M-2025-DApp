@@ -11,22 +11,30 @@ export default function CreateMarketForm() {
   const createMarket = useMarketStore((s) => s.createMarket);
 
   const [title, setTitle] = useState("");
-  const [oracle, setOracle] = useState("");
+  const [oracle, setOracle] = useState("Admin");
   const [prizePool, setPrizePool] = useState<number>(1000);
   const [description, setDescription] = useState("");
   const [options, setOptions] = useState([{ id: nanoid(), label: "", price: 5 }]);
+  const [resolveAtLocal, setResolveAtLocal] = useState<string>("");
 
   const addOption = () => setOptions([...options, { id: nanoid(), label: "", price: 5 }]);
   const removeOption = (id: string) => setOptions(options.filter(o => o.id !== id));
 
   const submit = () => {
     if (!title || options.length < 2) return alert("Title and 2+ options required.");
+
+    if (resolveAtLocal) {
+      const dt = new Date(resolveAtLocal);
+      if (Number.isNaN(dt.getTime())) return alert("Resolve date is invalid.");
+    }
+
     const market: Omit<Market, "id" | "status" | "createdAt"> = {
       title,
       description,
       oracle,
       prizePool: Number(prizePool),
       options: options.map(o => ({ ...o, tickets: 0, volume: 0 })),
+      resolveAt: resolveAtLocal ? new Date(resolveAtLocal).toISOString() : undefined,
     };
     const id = createMarket(market);
     router.push(`/market/${id}`);
@@ -43,7 +51,7 @@ export default function CreateMarketForm() {
       <div className="mb-3 grid gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium">Oracle</label>
-          <input value={oracle} onChange={(e)=>setOracle(e.target.value)}
+          <input disabled value={oracle} onChange={(e)=>setOracle(e.target.value)}
             className="mt-1 w-full rounded-xl border px-3 py-2" />
         </div>
         <div>
@@ -58,6 +66,19 @@ export default function CreateMarketForm() {
         <label className="block text-sm font-medium">Description</label>
         <textarea value={description} onChange={(e)=>setDescription(e.target.value)}
           className="mt-1 w-full rounded-xl border px-3 py-2" rows={3}/>
+      </div>
+
+      <div className="mb-3">
+        <label className="block text-sm font-medium">Resolve date</label>
+        <input
+          type="datetime-local"
+          value={resolveAtLocal}
+          onChange={(e)=>setResolveAtLocal(e.target.value)}
+          className="mt-1 w-full rounded-xl border px-3 py-2"
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Optional. If set, the market will show when it’s scheduled to resolve.
+        </p>
       </div>
 
       <div className="mb-3">
