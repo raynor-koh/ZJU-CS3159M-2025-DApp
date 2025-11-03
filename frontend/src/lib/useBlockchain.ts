@@ -130,10 +130,11 @@ export function useBlockchain() {
       if (input.optionLabels.length === 0) throw new Error("At least 1 option required");
       if (input.optionLabels.length !== prices.length) throw new Error("Option labels & prices length mismatch");
       if (prices.some((p) => p === BigInt(0))) throw new Error("Option price cannot be zero"); // <-- no 0n literal
-      if (prize === BigInt(0)) throw new Error("Prize pool cannot be zero");                     // <-- no 0n literal
 
-      // allowance for prize pool
-      await ensureAllowance(input.prizePoolTokens);
+      // allowance for prize pool (only if non-zero)
+      if (prize > BigInt(0)) {
+        await ensureAllowance(input.prizePoolTokens);
+      }
 
       // static call to reveal revert reason early
       await bet.createMarket.staticCall(

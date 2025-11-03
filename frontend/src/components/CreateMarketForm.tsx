@@ -114,6 +114,7 @@ export default function CreateMarketForm() {
           </label>
           <input
             value={oracle}
+            disabled
             onChange={(e) => setOracle(e.target.value)}
             className="mt-1 w-full rounded-xl border px-3 py-2"
             placeholder={account ? account.slice(0, 10) + "..." : "Your address"}
@@ -129,10 +130,10 @@ export default function CreateMarketForm() {
             value={prizePool}
             onChange={(e) => setPrizePool(Number(e.target.value))}
             className="mt-1 w-full rounded-xl border px-3 py-2"
-            min="1"
+            min="0"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Tokens you contribute to prize pool
+            Tokens you contribute to prize pool (can be 0)
           </p>
         </div>
       </div>

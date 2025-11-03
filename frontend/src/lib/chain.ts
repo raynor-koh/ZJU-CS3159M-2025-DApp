@@ -262,10 +262,11 @@ export async function createMarket(input: {
   if (input.optionLabels.length === 0) throw new Error("need at least one option");
   if (input.optionLabels.length !== prices.length) throw new Error("labels/prices length mismatch");
   if (prices.some((p) => p === BigInt(0))) throw new Error("option price cannot be zero");
-  if (prize === BigInt(0)) throw new Error("prize pool cannot be zero");
 
-  // Ensure allowance for prize pool
-  await ensureAllowance(input.prizePoolTokens);
+  // Ensure allowance for prize pool (only if non-zero)
+  if (prize > BigInt(0)) {
+    await ensureAllowance(input.prizePoolTokens);
+  }
 
   // Preflight (surface revert reason before sending)
   try {
@@ -395,4 +396,246 @@ export async function getUserWinningTickets(marketId: number, userAddress: strin
 
   console.log('Winning tickets found:', winningTickets);
   return winningTickets;
+}
+
+/* ----------------------------- Marketplace (Trading) ----------------------------- */
+
+export type TicketWithDetails = {
+  tokenId: number;
+  marketId: number;
+  optionId: number;
+  marketTitle: string;
+  optionLabel: string;
+  owner: string;
+  isListed: boolean;
+  listingPrice?: string; // in ERC20 tokens
+  marketStatus: "open" | "resolved";
+};
+
+/** Get all tickets owned by a user with full details */
+export async function getUserTickets(userAddress: string): Promise<TicketWithDetails[]> {
+  const provider = await getProvider();
+  const { bet, ticket } = getReadContracts(provider);
+
+  const tokenIds = await ticket.tokensOfOwner(userAddress);
+  const tickets: TicketWithDetails[] = [];
+
+  for (const tokenId of tokenIds) {
+    const info = await ticket.getTicketInfo(tokenId);
+    const marketId = Number(info.marketId);
+    const optionId = Number(info.optionId);
+
+    // Get market and option details
+    const [m, opts] = await Promise.all([bet.getMarket(marketId), bet.getOptions(marketId)]);
+    const [title, , , , , status] = m;
+    const option = opts[optionId];
+
+    // Check if listed
+    const listing = await bet.listings(tokenId);
+    const isListed = listing.seller !== "0x0000000000000000000000000000000000000000";
+    const dec = await tokenDecimals();
+
+    tickets.push({
+      tokenId: Number(tokenId),
+      marketId,
+      optionId,
+      marketTitle: title,
+      optionLabel: option.label,
+      owner: userAddress,
+      isListed,
+      listingPrice: isListed ? formatUnits(listing.priceTokens, dec) : undefined,
+      marketStatus: Number(status) === 0 ? "open" : "resolved",
+    });
+  }
+
+  return tickets;
+}
+
+/** Get all listed tickets across all markets */
+export async function getAllListedTickets(): Promise<TicketWithDetails[]> {
+  const provider = await getProvider();
+  const { bet, ticket } = getReadContracts(provider);
+
+  // Get total supply of tickets
+  const totalSupply = await ticket.totalSupply();
+  const listedTickets: TicketWithDetails[] = [];
+
+  // Check each ticket if it's listed
+  for (let i = 0; i < Number(totalSupply); i++) {
+    const tokenId = await ticket.tokenByIndex(i);
+    const listing = await bet.listings(tokenId);
+
+    if (listing.seller !== "0x0000000000000000000000000000000000000000") {
+      const info = await ticket.getTicketInfo(tokenId);
+      const marketId = Number(info.marketId);
+      const optionId = Number(info.optionId);
+
+      // Get market and option details
+      const [m, opts] = await Promise.all([bet.getMarket(marketId), bet.getOptions(marketId)]);
+      const [title, , , , , status] = m;
+      const option = opts[optionId];
+      const dec = await tokenDecimals();
+
+      listedTickets.push({
+        tokenId: Number(tokenId),
+        marketId,
+        optionId,
+        marketTitle: title,
+        optionLabel: option.label,
+        owner: listing.seller,
+        isListed: true,
+        listingPrice: formatUnits(listing.priceTokens, dec),
+        marketStatus: Number(status) === 0 ? "open" : "resolved",
+      });
+    }
+  }
+
+  return listedTickets;
+}
+
+/** List a ticket for sale */
+export async function listTicketForSale(tokenId: number, priceTokens: string) {
+  const { bet, ticket, signer } = await getSignerAndContracts();
+  const dec = await tokenDecimals();
+
+  const priceTokensWei = parseUnits(priceTokens, dec);
+
+  // Step 1: Check if EasyBet is approved for all NFTs, if not, approve it
+  const userAddress = await signer.getAddress();
+  const isApproved = await ticket.isApprovedForAll(userAddress, bet.target);
+
+  if (!isApproved) {
+    // Give EasyBet permission to transfer any of user's tickets
+    const approveTx = await ticket.setApprovalForAll(bet.target, true);
+    await approveTx.wait();
+  }
+
+  // Step 2: List the ticket for sale
+  try {
+    await bet.listForSale.staticCall(tokenId, priceTokensWei);
+  } catch (e: any) {
+    throw new Error(`listForSale would revert: ${decodeRevert(e)}`);
+  }
+
+  const tx = await bet.listForSale(tokenId, priceTokensWei);
+  return await tx.wait();
+}
+
+/** Cancel a listing */
+export async function cancelTicketListing(tokenId: number) {
+  const { bet } = await getSignerAndContracts();
+
+  try {
+    await bet.cancelListing.staticCall(tokenId);
+  } catch (e: any) {
+    throw new Error(`cancelListing would revert: ${decodeRevert(e)}`);
+  }
+
+  const tx = await bet.cancelListing(tokenId);
+  return await tx.wait();
+}
+
+/** Buy a listed ticket */
+export async function buyListedTicket(tokenId: number, priceTokens: string) {
+  const { bet, token } = await getSignerAndContracts();
+  const dec = await tokenDecimals();
+
+  const priceTokensWei = parseUnits(priceTokens, dec);
+
+  // Step 1: Approve EasyBet to spend buyer's tokens (similar to buying from primary market)
+  await ensureAllowance(priceTokens);
+
+  // Step 2: Buy the listed ticket
+  try {
+    await bet.buyListed.staticCall(tokenId);
+  } catch (e: any) {
+    throw new Error(`buyListed would revert: ${decodeRevert(e)}`);
+  }
+
+  const tx = await bet.buyListed(tokenId);
+  return await tx.wait();
+}
+
+/** Check if user has approved the marketplace to transfer their tickets */
+export async function isMarketplaceApproved(userAddress: string): Promise<boolean> {
+  const provider = await getProvider();
+  const { bet, ticket } = getReadContracts(provider);
+  return await ticket.isApprovedForAll(userAddress, bet.target);
+}
+
+/** Approve the marketplace to transfer user's tickets */
+export async function approveMarketplace() {
+  const { bet, ticket } = await getSignerAndContracts();
+  const tx = await ticket.setApprovalForAll(bet.target, true);
+  return await tx.wait();
+}
+
+/* ----------------------------- Order Book ----------------------------- */
+
+export type OrderBookLevel = {
+  price: string; // human-readable price in tokens
+  quantity: number; // number of tickets at this price
+  tokenIds: number[]; // actual token IDs at this price
+};
+
+export type OrderBookData = {
+  marketId: number;
+  optionId: number;
+  levels: OrderBookLevel[]; // sorted by price ascending
+};
+
+/** Get the full order book for a specific market option */
+export async function getOrderBook(marketId: number, optionId: number): Promise<OrderBookData> {
+  const provider = await getProvider();
+  const { bet } = getReadContracts(provider);
+  const dec = await tokenDecimals();
+
+  // Get all price levels (already sorted ascending in contract)
+  const priceLevels = await bet.getOrderBookPriceLevels(marketId, optionId);
+
+  const levels: OrderBookLevel[] = [];
+
+  for (const priceWei of priceLevels) {
+    const quantity = await bet.getOrderBookQuantityAtPrice(marketId, optionId, priceWei);
+    const tokenIds = await bet.getOrderBookTokensAtPrice(marketId, optionId, priceWei);
+
+    levels.push({
+      price: formatUnits(priceWei, dec),
+      quantity: Number(quantity),
+      tokenIds: tokenIds.map((id: any) => Number(id)),
+    });
+  }
+
+  return {
+    marketId,
+    optionId,
+    levels,
+  };
+}
+
+/** Buy a ticket at the best (lowest) price for a given market option */
+export async function buyAtBestPrice(marketId: number, optionId: number) {
+  const { bet } = await getSignerAndContracts();
+  const dec = await tokenDecimals();
+
+  // Get order book to find the best price for allowance
+  const orderBook = await getOrderBook(marketId, optionId);
+  if (orderBook.levels.length === 0) {
+    throw new Error("No listings available for this option");
+  }
+
+  const bestPrice = orderBook.levels[0].price; // Already sorted ascending
+
+  // Approve tokens for the best price
+  await ensureAllowance(bestPrice);
+
+  // Preflight
+  try {
+    await bet.buyAtBestPrice.staticCall(marketId, optionId);
+  } catch (e: any) {
+    throw new Error(`buyAtBestPrice would revert: ${decodeRevert(e)}`);
+  }
+
+  const tx = await bet.buyAtBestPrice(marketId, optionId);
+  return await tx.wait();
 }

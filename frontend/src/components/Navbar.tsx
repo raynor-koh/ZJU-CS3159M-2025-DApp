@@ -24,6 +24,7 @@ export default function Navbar() {
 
         <nav className="flex items-center gap-4">
           <Link href="/" className="text-sm hover:underline">Home</Link>
+          <Link href="/marketplace" className="text-sm hover:underline">Marketplace</Link>
           <Link href="/admin" className="text-sm hover:underline">Admin</Link>
 
           {!account ? (

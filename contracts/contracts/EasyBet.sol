@@ -39,7 +39,7 @@ contract EasyBet is AccessControl, ReentrancyGuard {
 
     struct Listing {
         address seller;
-        uint256 priceWei;  // Secondary market uses ETH for simplicity
+        uint256 priceTokens;  // Secondary market uses ERC20 tokens
     }
 
     TicketNFT public immutable ticket;
@@ -58,11 +58,17 @@ contract EasyBet is AccessControl, ReentrancyGuard {
     // index of winning tickets per market (optional)
     mapping(uint256 => EnumerableSet.UintSet) private _winningTokens;
 
+    // Order book: (marketId, optionId, price) => set of tokenIds
+    mapping(uint256 => mapping(uint8 => mapping(uint256 => EnumerableSet.UintSet))) private orderBook;
+
+    // Track all unique price levels for each (marketId, optionId)
+    mapping(uint256 => mapping(uint8 => EnumerableSet.UintSet)) private priceLevels;
+
     event MarketCreated(uint256 indexed marketId, string title, uint256 prizePoolTokens);
     event TicketPurchased(uint256 indexed marketId, uint8 indexed optionId, uint256 indexed tokenId, address buyer, uint256 priceTokens);
-    event Listed(uint256 indexed tokenId, address seller, uint256 priceWei);
+    event Listed(uint256 indexed tokenId, address seller, uint256 priceTokens);
     event Unlisted(uint256 indexed tokenId);
-    event Bought(uint256 indexed tokenId, address seller, address buyer, uint256 priceWei);
+    event Bought(uint256 indexed tokenId, address seller, address buyer, uint256 priceTokens);
     event MarketResolved(uint256 indexed marketId, uint8 winningOption, uint256 winners, uint256 payoutPerTicketTokens);
     event Claimed(uint256 indexed tokenId, address claimer, uint256 amountTokens);
 
@@ -88,13 +94,14 @@ contract EasyBet is AccessControl, ReentrancyGuard {
     ) external onlyRole(ADMIN_ROLE) returns (uint256 marketId) {
         require(optionLabels.length >= 2, "need 2+ options");
         require(optionLabels.length == optionPricesTokens.length, "length mismatch");
-        require(prizePoolTokens > 0, "prize pool must be > 0");
 
-        // Transfer prize pool from admin
-        require(
-            easyToken.transferFrom(msg.sender, address(this), prizePoolTokens),
-            "transfer failed"
-        );
+        // Transfer prize pool from admin (only if non-zero)
+        if (prizePoolTokens > 0) {
+            require(
+                easyToken.transferFrom(msg.sender, address(this), prizePoolTokens),
+                "transfer failed"
+            );
+        }
 
         marketId = ++marketCount;
         Market storage m = markets[marketId];
@@ -166,38 +173,69 @@ contract EasyBet is AccessControl, ReentrancyGuard {
         emit TicketPurchased(marketId, optionId, tokenId, msg.sender, o.priceTokens);
     }
 
-    // --------- Simple listing / trading (uses ETH for secondary market) ----------
+    // --------- Simple listing / trading (uses ERC20 tokens for secondary market) ----------
 
-    function listForSale(uint256 tokenId, uint256 priceWei) external {
+    function listForSale(uint256 tokenId, uint256 priceTokens) external {
         require(ticket.ownerOf(tokenId) == msg.sender, "not owner");
-        listings[tokenId] = Listing({seller: msg.sender, priceWei: priceWei});
-        emit Listed(tokenId, msg.sender, priceWei);
+
+        // Get ticket info for order book indexing
+        TicketNFT.TicketInfo memory info = ticket.getTicketInfo(tokenId);
+
+        // Remove from old price level if already listed
+        Listing memory oldListing = listings[tokenId];
+        if (oldListing.seller != address(0)) {
+            _removeFromOrderBook(info.marketId, info.optionId, oldListing.priceTokens, tokenId);
+        }
+
+        // Create new listing
+        listings[tokenId] = Listing({seller: msg.sender, priceTokens: priceTokens});
+
+        // Add to order book
+        orderBook[info.marketId][info.optionId][priceTokens].add(tokenId);
+        priceLevels[info.marketId][info.optionId].add(priceTokens);
+
+        emit Listed(tokenId, msg.sender, priceTokens);
     }
 
     function cancelListing(uint256 tokenId) external {
         Listing memory l = listings[tokenId];
         require(l.seller == msg.sender, "not seller");
+
+        // Get ticket info for order book
+        TicketNFT.TicketInfo memory info = ticket.getTicketInfo(tokenId);
+
+        // Remove from order book
+        _removeFromOrderBook(info.marketId, info.optionId, l.priceTokens, tokenId);
+
         delete listings[tokenId];
         emit Unlisted(tokenId);
     }
 
-    function buyListed(uint256 tokenId) external payable nonReentrant {
+    function buyListed(uint256 tokenId) external nonReentrant {
         Listing memory l = listings[tokenId];
         require(l.seller != address(0), "not listed");
-        require(msg.value == l.priceWei, "bad price");
+        require(l.seller != msg.sender, "cannot buy own ticket");
+
+        // Get ticket info for order book
+        TicketNFT.TicketInfo memory info = ticket.getTicketInfo(tokenId);
+
+        // Remove from order book
+        _removeFromOrderBook(info.marketId, info.optionId, l.priceTokens, tokenId);
 
         // clear listing first to avoid re-entrancy issues
         delete listings[tokenId];
 
-        // pay seller
-        (bool ok, ) = l.seller.call{value: msg.value}("");
-        require(ok, "pay fail");
+        // Transfer ERC20 tokens from buyer to seller
+        require(
+            easyToken.transferFrom(msg.sender, l.seller, l.priceTokens),
+            "transfer failed"
+        );
 
-        // transfer token
+        // transfer NFT from seller to buyer
         address seller = l.seller;
         ticket.safeTransferFrom(seller, msg.sender, tokenId);
 
-        emit Bought(tokenId, seller, msg.sender, msg.value);
+        emit Bought(tokenId, seller, msg.sender, l.priceTokens);
     }
 
     // --------- Resolve & Claim (equal split) ----------
@@ -245,7 +283,139 @@ contract EasyBet is AccessControl, ReentrancyGuard {
         emit Claimed(tokenId, msg.sender, m.payoutPerTicketTokens);
     }
 
+    // --------- Order Book Functions ----------
+
+    /**
+     * Get all price levels for a specific market option, sorted ascending
+     */
+    function getOrderBookPriceLevels(uint256 marketId, uint8 optionId)
+        external
+        view
+        returns (uint256[] memory prices)
+    {
+        EnumerableSet.UintSet storage levels = priceLevels[marketId][optionId];
+        uint256 len = levels.length();
+        prices = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            prices[i] = levels.at(i);
+        }
+
+        // Sort prices ascending (simple bubble sort, good enough for small arrays)
+        for (uint256 i = 0; i < prices.length; i++) {
+            for (uint256 j = i + 1; j < prices.length; j++) {
+                if (prices[i] > prices[j]) {
+                    (prices[i], prices[j]) = (prices[j], prices[i]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get quantity of tickets available at a specific price level
+     */
+    function getOrderBookQuantityAtPrice(uint256 marketId, uint8 optionId, uint256 price)
+        external
+        view
+        returns (uint256)
+    {
+        return orderBook[marketId][optionId][price].length();
+    }
+
+    /**
+     * Get all token IDs at a specific price level
+     */
+    function getOrderBookTokensAtPrice(uint256 marketId, uint8 optionId, uint256 price)
+        external
+        view
+        returns (uint256[] memory tokenIds)
+    {
+        EnumerableSet.UintSet storage tokens = orderBook[marketId][optionId][price];
+        uint256 len = tokens.length();
+        tokenIds = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            tokenIds[i] = tokens.at(i);
+        }
+    }
+
+    /**
+     * Buy ticket at the best (lowest) price for a given market option
+     * Automatically skips the buyer's own listings
+     */
+    function buyAtBestPrice(uint256 marketId, uint8 optionId) external nonReentrant returns (uint256 tokenId) {
+        EnumerableSet.UintSet storage levels = priceLevels[marketId][optionId];
+        require(levels.length() > 0, "no listings");
+
+        // Sort price levels to find best prices
+        uint256[] memory sortedPrices = new uint256[](levels.length());
+        for (uint256 i = 0; i < levels.length(); i++) {
+            sortedPrices[i] = levels.at(i);
+        }
+
+        // Bubble sort ascending
+        for (uint256 i = 0; i < sortedPrices.length; i++) {
+            for (uint256 j = i + 1; j < sortedPrices.length; j++) {
+                if (sortedPrices[i] > sortedPrices[j]) {
+                    (sortedPrices[i], sortedPrices[j]) = (sortedPrices[j], sortedPrices[i]);
+                }
+            }
+        }
+
+        // Find first token not owned by buyer
+        bool found = false;
+        for (uint256 priceIdx = 0; priceIdx < sortedPrices.length; priceIdx++) {
+            uint256 price = sortedPrices[priceIdx];
+            EnumerableSet.UintSet storage tokensAtPrice = orderBook[marketId][optionId][price];
+
+            for (uint256 i = 0; i < tokensAtPrice.length(); i++) {
+                uint256 candidateTokenId = tokensAtPrice.at(i);
+                Listing memory listing = listings[candidateTokenId];
+
+                if (listing.seller != address(0) && listing.seller != msg.sender) {
+                    tokenId = candidateTokenId;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) break;
+        }
+
+        require(found, "no listings from other sellers");
+
+        // Buy the found token
+        Listing memory l = listings[tokenId];
+
+        // Remove from order book
+        _removeFromOrderBook(marketId, optionId, l.priceTokens, tokenId);
+
+        // Clear listing
+        delete listings[tokenId];
+
+        // Transfer ERC20 tokens from buyer to seller
+        require(
+            easyToken.transferFrom(msg.sender, l.seller, l.priceTokens),
+            "transfer failed"
+        );
+
+        // Transfer NFT from seller to buyer
+        address seller = l.seller;
+        ticket.safeTransferFrom(seller, msg.sender, tokenId);
+
+        emit Bought(tokenId, seller, msg.sender, l.priceTokens);
+    }
+
     // --------- Helpers ----------
+
+    function _removeFromOrderBook(uint256 marketId, uint8 optionId, uint256 price, uint256 tokenId) internal {
+        orderBook[marketId][optionId][price].remove(tokenId);
+
+        // If no more tokens at this price, remove the price level
+        if (orderBook[marketId][optionId][price].length() == 0) {
+            priceLevels[marketId][optionId].remove(price);
+        }
+    }
 
     function _mustMarket(uint256 marketId) internal view returns (Market storage) {
         Market storage m = markets[marketId];
