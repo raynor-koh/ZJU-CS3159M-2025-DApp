@@ -1,52 +1,51 @@
-# ZJU-blockchain-course-2025
-
-⬆ 可以️修改成你自己的项目名。
-
-> 第二次作业要求（以下内容提交时可以删除）：
-> 
-> 进阶的去中心化彩票系统，参与方包括：竞猜玩家、公证人
->
-> **背景**：传统的体育彩票系统（例如我国的体育彩票）一般没有彩票交易功能：例如，对于“NBA本赛季MVP为某球员/F1的赛季总冠军为某车队”这类持续时间长的事件的下注一般在赛季开始前就会买定离手，这使得一旦出现突发或不确定事件（如球员A赛季报销/球队B买入强力球星/C车队车手受伤等），很多玩家的选择便会立即失去意义，导致彩票游戏的可玩性下降。因此，一个有趣的探索方向是让彩票系统拥有合规、方便的交易功能。
->
-> 建立一个进阶的去中心化彩票系统（可以是体育彩票，或其它任何比赛节目的竞猜，例如《中国好声音》《我是歌手》年度总冠军等，可以参考 [Polymarket](https://polymarket.com/) ），在网站中：
-> - 公证人（你自己）可以创立许多竞猜项目：例如某场比赛的输赢、年度总冠军的得主等，每个项目应当有2个或多个可能的选项，一定的彩票总金额（由公证人提供），以及规定好的结果公布时间。
-> - 玩家首先领取到测试所需以太币。在网站中，对于一个竞猜项目和多个可能的选项：
->   1. 每个竞彩玩家都可以选择其中的某个选项并购买一定金额（自己定义）的彩票，购买后该玩家会获得一张对应的彩票凭证（一个 ERC721 合约中的 Token）
->   2. 在竞彩结果公布之前，任何玩家之间可以买卖他们的彩票，以应对项目进行期间的任何突发状况。具体的买卖机制如下：一个玩家可以以指定的金额挂单出售（ERC721 Delegate）自己的彩票，其它玩家如果觉得该彩票有利可图就可以买入他的彩票。双方完成一次 ERC721 Token 交易。
->   3. 公证人可以在时间截止时（简单起见，你可以随时终止项目）输入竞猜的结果并进行结算。所有胜利的玩家可以平分奖池中的金额。
-> - Bonus（最多5分，若想要完成，可以直接将功能整合进上述要求中）：
->   1. （2分）发行一个 ERC20 合约，允许用户领取 ERC20 积分，并使用ERC20积分完成上述流程。
->   2. （3分）对交易彩票的过程实现一个简单的链上订单簿：卖方用户可以以不同价格出售一种彩票，网页上显示当前订单簿的信息（多少价格有多少该彩票正在出售）。其他用户可以根据最优价格购买彩票。
-> - 可以对上述需求进行合理更改和说明。请大家专注于功能实现，网站UI美观程度不纳入评分标准，能让用户能够舒适操作即可。
-
-**以下内容为作业仓库的README.md中需要描述的内容。请根据自己的需要进行修改并提交。**
-
-作业提交方式为：**提交视频文件**和**仓库的链接**到指定邮箱。
+# 浙江大学 CS3159M ZJU-PolyMarket DApp
 
 ## 如何运行
 
-补充如何完整运行你的应用。
-
-1. 在本地启动ganache应用。
+1. 在本地启动ganache应用。把账户的私钥拷贝到`./contracts/hardhat.config.ts` 中 `accounts` 数组里。
+![Hardhat config](./screenshots/hardhat_config.png)
 
 2. 在 `./contracts` 中安装需要的依赖，运行如下的命令：
+
     ```bash
     npm install
     ```
+
 3. 在 `./contracts` 中编译合约，运行如下的命令：
+
     ```bash
+    npx hardhat clean
     npx hardhat compile
+    npx hardhat run ./scripts/deploy.ts --network ganache
     ```
-4. ...
-5. ...
+
+![`deploy.ts` output](screenshots/deploy_output.png)
+
+4. 把以上的地址拷贝到 `./frontend/src/utils/contract-addresses.json`, i.e. 更新`./frontend/src/utils/contract-addresses.json`中合约的地址。
+
+5. 把 `./contracts/artifacts/contracts/EasyBet.sol/EasyBet.json`、`./contracts/artifacts/contracts/EasyToken.sol/EasyToken.json` 和 `./contracts/artifacts/contracts/TicketNFT.sol/TicketNFT.json` 拷贝到 `./frontend/src/utils/abis`。
+
 6. 在 `./frontend` 中安装需要的依赖，运行如下的命令：
+
     ```bash
     npm install
     ```
+
 7. 在 `./frontend` 中启动前端程序，运行如下的命令：
+
     ```bash
+    npm run build
     npm run start
     ```
+
+8. 在游览器，打开 `localhost:3000`。
+
+9. 在游览器设置 MetaMask。点击 `Import an account`, 然后输入Ganache区块链上账户的私钥。
+
+![Add Wallet](./screenshots/metamask_add_wallet.png)
+![Input Private Key](./screenshots/metamask_insert_private_key.png)
+
+10. 把 `localhost:3000` 加上 Metamask Networks > Select Networks > Custom > Add Custom Network 上， 并与 `localhost:3000` 链接。
 
 ## 功能实现分析
 
