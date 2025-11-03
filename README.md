@@ -75,198 +75,203 @@
 
 #### 钱包：
 
+![Admin Metamask](./screenshots/initial/1.png)
+![Player Metamask](./screenshots/initial/2.png)
+
 #### 区块链：（账户、转账、区块）
 
+![Ganache Accounts](./screenshots/initial/3.png)
+![Ganache Blocks](./screenshots/initial/4.png)
+![Ganache Transactions](./screenshots/initial/5.png)
+
 #### 页面（`/`）：
+
+![Admin Home Page](./screenshots/initial/6.png)
+![Player Home Page](./screenshots/initial/7.png)
 
 ### 领EasyToken （EZT）：
 
+我先用Admin领取EasyToken，再用Player_1领。
+
 #### 钱包：
 
-前：
+Admin:
 
-后：
+![Admin Metamask Activity](./screenshots/claim/1.png)
+![Admin Metamask Tokens](./screenshots/claim/2.png)
+
+Player 1:
+
+![Player Metamask Activity](./screenshots/claim/7.png)
+![Player Metamask Tokens](./screenshots/claim/8.png)
 
 #### 区块链：（账户、转账、区块）
 
-前：
+Admin 0:
 
-后：
+![Ganache Accounts](./screenshots/claim/3.png)
+![Ganache Blocks](./screenshots/claim/4.png)
+![Ganache Transactions](./screenshots/claim/5.png)
+
+Player 1:
+
+![Ganache Accounts](./screenshots/claim/9.png)
+![Ganache Blocks](./screenshots/claim/10.png)
+![Ganache Transactions](./screenshots/claim/11.png)
 
 #### 页面（`/`）：
 
-前：
+Admin:
 
-后：
+![Home Page](./screenshots/claim/6.png)
+
+Player 1:
+
+![Home Page](./screenshots/claim/12.png)
 
 ### 创立竞猜项目
 
 #### 钱包：
 
-前：
-
-后：
+![Metamask Wallet Tokens](./screenshots/createMarket/3.png)
+![Metamask Wallet Activity](./screenshots/createMarket/4.png)
 
 #### 区块链：（账户、转账、区块）
 
-前：
-
-后：
+![Ganache Accounts](./screenshots/createMarket/7.png)
+![Ganache Blocks](./screenshots/createMarket/8.png)
+![Ganache Transactions](./screenshots/createMarket/9.png)
 
 #### 页面（`/admin`）：
-只有 `admin` 才能创立项目
 
-非 `admin` 无法创立项目
+只有 `admin` 才能创立项目:
+![Completed Form](./screenshots/createMarket/1.png)
+
+非 `admin` 无法创立项目:
+![Non-admin restriction](./screenshots/createMarket/2.png)
 
 刚创立的项目会出现在首页（`/`），也会出现在 `/admin` 页
+![Home Page](./screenshots/createMarket/5.png)
+![Admin Page](./screenshots/createMarket/6.png)
 
 ### 选择其中的某个选项并购买彩票，获得一张对应的彩票凭证
 
 #### 钱包：
 
-前：
-
-后：
+![Metamask Wallet Activity](./screenshots/buyPrimary/2.png)
 
 #### 区块链：（账户、转账、区块）
 
-前：
-
-后：
+![Ganache 1](./screenshots/buyPrimary/5.png)
+![Ganache 2](./screenshots/buyPrimary/6.png)
+![Ganache 3](./screenshots/buyPrimary/7.png)
 
 #### 页面：
 
-首页：
+买彩票（`/market/[id]`）
 
-    前：
-
-    后：
-
-买彩票（`/market/[id]`）：
+![Market Page Before](./screenshots/buyPrimary/1.png)
+![Market Page After](./screenshots/buyPrimary/3.png)
 
 查看自己的彩票 （`/marketplace`）：
+
+![Ticket Page](./screenshots/buyPrimary/4.png)
 
 ### 在竞彩结果公布之前出售彩票
 
 #### 钱包：
 
-前：
-
-后：
+![Metamask Activity](./screenshots/sellSecondary/3.png)
 
 #### 区块链：（账户、转账、区块）
 
-前：
-
-后：
+![Ganache 1](./screenshots/sellSecondary/6.png)
+![Ganache 2](./screenshots/sellSecondary/7.png)
+![Ganache 3](./screenshots/sellSecondary/8.png)
 
 #### 页面（`/marketplace`）：
 
 前：
 
-    出售彩票：
-
-    彩票市场：
-
-    自己彩票数
+![Ticket Page](./screenshots/sellSecondary/1.png)
+![Marketplace Page](./screenshots/sellSecondary/2.png)
 
 后：
 
+![Ticket Page](./screenshots/sellSecondary/4.png)
+![Marketplace Page](./screenshots/sellSecondary/5.png)
 
-    出售彩票：
-
-    彩票市场：
-
-    自己彩票数
 
 ### 在竞彩结果公布之前买别的玩家的彩票
 
 #### 钱包：
 
-前：
+Player 1:
 
-后：
+![Metamask Activity Player 1](./screenshots/buySecondary/3.png)
+![Metamask Activity Player 1](./screenshots/buySecondary/4.png)
+
+Admin:
+
+![Metamask Wallet Activity](./screenshots/sellSecondary/3.png)
+![Metamask Wallet Activity](./screenshots/buySecondary/9.png)
 
 #### 区块链：（账户、转账、区块）
 
-前：
-
-后：
+![Ganache 1](./screenshots/buySecondary/10.png)
+![Ganache 2](./screenshots/buySecondary/11.png)
+![Ganache 3](./screenshots/buySecondary/12.png)
 
 #### 页面（`/marketplace`）：
 
 前：
 
-    出售彩票：
+Player 1:
 
-    彩票市场：
+![Marketplace Page](./screenshots/buySecondary/1.png)
+![Ticket Page](./screenshots/buySecondary/2.png)
 
-    自己彩票数
+Admin:
 
-后：
-
-
-    出售彩票：
-
-    彩票市场：
-
-    自己彩票数
-
-### 订单簿
-
-#### 钱包：
-
-前：
+![Marketplace Page](./screenshots/sellSecondary/5.png)
+![Ticket Page](./screenshots/sellSecondary/4.png)
 
 后：
 
-#### 区块链：（账户、转账、区块）
+Player 1:
 
-前：
+![Marketplace Page](./screenshots/buySecondary/5.png)
+![Ticket Page](./screenshots/buySecondary/6.png)
 
-后：
+Admin:
 
-#### 页面（`/marketplace`）：
-
-前：
-
-    订单簿：
-
-    买最有价格的彩票：
-
-后：
-
-    订单簿：
-
-    买最有价格的彩票：
+![Marketplace Page](./screenshots/buySecondary/7.png)
+![Ticket Page](./screenshots/buySecondary/8.png)
 
 ### 公证人输入项目结果
 
 #### 钱包：
 
-前：
-
-后：
+![Metamask Wallet Activity](./screenshots/buySecondary/9.png)
+![Metamask Wallet Activity](./screenshots/resolveMarket/3.png)
 
 #### 区块链：（账户、转账、区块）
 
-前：
-
-后：
+![Ganache](./screenshots/resolveMarket/6.png)
+![Ganache](./screenshots/resolveMarket/7.png)
+![Ganache](./screenshots/resolveMarket/8.png)
 
 #### 页面
 
-首页（`/`）：
+前：
 
-    前：
+![Admin Page](./screenshots/resolveMarket/1.png)
+![Admin Page](./screenshots/resolveMarket/2.png)
 
-    后：
+后：
 
-项目页 （`/market/[id]`）：
-
-    前：
-
-    后：
+![Admin Page](./screenshots/resolveMarket/4.png)
+![Admin Page](./screenshots/resolveMarket/5.png)
 
 ### 胜利玩家领金额
 
@@ -274,19 +279,27 @@
 
 前：
 
+![Metamask](./screenshots/reward/2.png)
+
 后：
+
+![Metamask](./screenshots/reward/3.png)
 
 #### 区块链：（账户、转账、区块）
 
-前：
-
-后：
+![Ganache](./screenshots/reward/5.png)
+![Ganache](./screenshots/reward/6.png)
+![Ganache](./screenshots/reward/7.png)
 
 #### 页面 （`/market/[id]`）
 
 前：
 
+![Market Page](./screenshots/reward/1.png)
+
 后：
+
+![Market Page](./screenshots/reward/4.png)
 
 ## 参考内容
 
