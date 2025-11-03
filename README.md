@@ -75,9 +75,21 @@
 
 #### 钱包：
 
+![Initial Wallet Admin](./screenshots/dApp/initial/wallet_admin.png)
+![Intial Wallet Player](./screenshots/dApp/initial/wallet_player.png)
+
 #### 区块链：（账户、转账、区块）
 
+![Initial Blockchain Accounts](./screenshots/dApp/initial/blockchain_accounts.png)
+![Initial Blockchain Blocks](./screenshots/dApp/initial/blockchain_blocks.png)
+![Initial Blockchain Transactions](./screenshots/dApp/initial/blockchain_transaction.png)
+
 #### 页面（`/`）：
+
+公证人首页：
+![Initial Admin Page](./screenshots/dApp/initial/admin_page.png)
+玩家首页：
+![Intiial Player Page](./screenshots/dApp/initial/player_page.png)
 
 ### 领EasyToken （EZT）：
 
